@@ -5,6 +5,24 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>KHOBAR · Kelas Halaqoh Bahasa Arab</title>
+<script>
+ 
+(function () {
+  var galat = window.__khGalat = [], mulai = Date.now();
+  window.addEventListener('error', function (e) { galat.push((e.message || 'Galat skrip') + (e.lineno ? ' (baris ' + e.lineno + ')' : '')); });
+  var t = setInterval(function () {
+    var app = document.getElementById('app');
+    if (!app || !app.querySelector('.memuat') || app.children.length !== 1) { if (app && !app.querySelector('.memuat')) clearInterval(t); return; }
+    if (window.__khMinta > 0 || Date.now() - mulai < 20000) return;
+    clearInterval(t);
+    var api = window.KHOBAR_API, lama = api ? '<a href="' + api + '" style="display:inline-block;margin-top:10px;padding:12px 18px;border-radius:12px;border:1.5px solid #095249;color:#095249;font-weight:600;text-decoration:none">Buka lewat alamat Apps Script</a>' : '';
+    app.innerHTML = '<div style="max-width:420px;margin:15vh auto 0;padding:24px;text-align:center;font-family:system-ui,sans-serif;color:#1E2A44">' +
+      '<b style="font-size:17px">Aplikasi belum bisa dibuka</b><p style="color:#64708A;margin:10px 0 16px;line-height:1.5">Halaman tidak termuat sempurna.' + (api ? ' Bila ini versi GitHub: unduh ulang index.html dari Pengaturan → Tampilan di GitHub Pages (lewat alamat Apps Script), lalu unggah lagi ke GitHub.' : '') + '</p>' +
+      (galat.length ? '<p style="font-size:12px;color:#D9435B;word-break:break-word;margin-bottom:12px">' + galat[0].replace(/</g, '&lt;') + '</p>' : '') +
+      '<button onclick="location.reload()" style="padding:12px 18px;border-radius:12px;border:0;background:#095249;color:#fff;font-weight:600">Muat ulang</button><br>' + lama + '</div>';
+  }, 2000);
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&amp;family=Amiri:wght@400;700&amp;display=swap" rel="stylesheet">
 <style>
@@ -737,14 +755,13 @@ function kirim(aksi, data) {
   var token = S.token;
   return new Promise(function (resolve, reject) {
     if (window.google && google.script && google.script.run) {
-      google.script.run.withSuccessHandler(resolve).withFailureHandler(function () {
-        reject(new Error('Tidak bisa terhubung ke server. Periksa sinyal internet lalu coba lagi.'));
+      window.__khMinta = (window.__khMinta || 0) + 1;
+      google.script.run.withSuccessHandler(function (r) { window.__khMinta--; resolve(r); }).withFailureHandler(function () {
+        window.__khMinta--; reject(new Error('Tidak bisa terhubung ke server. Periksa sinyal internet lalu coba lagi.'));
       }).api(aksi, data || {}, token);
     } else if (window.KHOBAR_API) {
        
-      fetch(window.KHOBAR_API, { method: 'POST', body: JSON.stringify({ aksi: aksi, data: data || {}, token: token }), redirect: 'follow' })
-        .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-        .then(resolve, function () { reject(new Error('Tidak bisa terhubung ke server. Periksa sinyal internet lalu coba lagi.')); });
+      kirimFetch(aksi, data, token, aksi === 'bootstrap' || aksi === 'login' ? 1 : 0).then(resolve, reject);
     } else if (window.DemoBackend) {
       setTimeout(function () { try { resolve(DemoBackend.api(aksi, data || {}, token)); } catch (e) { reject(e); } }, 160);
     } else reject(new Error('Backend tidak tersedia.'));
@@ -949,8 +966,30 @@ function layarMasuk() {
     $$('[data-demo]').forEach(function (b) { b.onclick = function () { var p = b.dataset.demo.split('|'); f.username.value = p[0]; f.password.value = p[1]; f.requestSubmit ? f.requestSubmit() : f.onsubmit(new Event('submit')); }; });
   }).catch(function (e) { layarGalat(e.message, layarMasuk); });
 }
+ 
+var BATAS_FETCH = { bootstrap: 40000, login: 40000 };
+function kirimFetch(aksi, data, token, ulang) {
+  window.__khMinta = (window.__khMinta || 0) + 1;
+  var ctl = window.AbortController ? new AbortController() : null, batas = BATAS_FETCH[aksi] || 90000;
+  var tm = ctl ? setTimeout(function () { ctl.abort(); }, batas) : null;
+  var selesai = function () { window.__khMinta--; if (tm) clearTimeout(tm); };
+  return fetch(window.KHOBAR_API, { method: 'POST', body: JSON.stringify({ aksi: aksi, data: data || {}, token: token }), redirect: 'follow', cache: 'no-store', signal: ctl ? ctl.signal : undefined })
+    .then(function (r) {
+      if (!r.ok) throw { pesan: 'Server menjawab dengan galat (HTTP ' + r.status + '). Pastikan alamat server di index.html masih benar.' };
+      return r.text().then(function (t) {
+        try { return JSON.parse(t); } catch (e) { throw { pesan: 'Server tidak menjawab dengan data aplikasi. Biasanya karena akses deployment belum "Siapa saja", atau alamat /exec berubah karena dibuat "Deployment baru". Unduh ulang index.html dari Pengaturan.' }; }
+      });
+    })
+    .then(function (r) { selesai(); return r; }, function (e) {
+      selesai();
+      if (ulang > 0 && !(e && e.pesan)) return kirimFetch(aksi, data, token, ulang - 1);
+      var msg = e && e.pesan ? e.pesan : e && e.name === 'AbortError' ? 'Server tidak menjawab dalam ' + Math.round(batas / 1000) + ' detik. Coba lagi sebentar lagi.' : 'Tidak bisa terhubung ke server. Periksa sinyal internet lalu coba lagi.';
+      throw new Error(msg);
+    });
+}
 function layarGalat(pesan, ulang) {
-  $('#app').innerHTML = '<div class="galat-blok">' + ik('awas') + '<b>Gagal memuat</b><p>' + h(pesan) + '</p><button class="btn btn-utama" id="b-ulang">' + ik('ulang') + 'Coba lagi</button></div>';
+  $('#app').innerHTML = '<div class="galat-blok">' + ik('awas') + '<b>Gagal memuat</b><p>' + h(pesan) + '</p><button class="btn btn-utama" id="b-ulang">' + ik('ulang') + 'Coba lagi</button>' +
+    (window.KHOBAR_API ? '<a class="btn btn-garis" style="margin-top:10px" href="' + h(window.KHOBAR_API) + '">Buka lewat alamat Apps Script</a>' : '') + '</div>';
   $('#b-ulang').onclick = ulang;
 }
 function layarSetup() {
