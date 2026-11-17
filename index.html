@@ -3176,7 +3176,8 @@ function pasangPengawas() {
 }
 function lepasPengawas() { if (PENGAWAS) PENGAWAS(); PENGAWAS = null; store.del('kh_uj_keluar'); }
 
-mulai();
+ 
+setTimeout(mulai, 0);
 
  
 var FONT_L = {
@@ -4440,7 +4441,7 @@ function paramUrl(cb) {
   try { if (window.google && google.script && google.script.url) return google.script.url.getLocation(function (l) { cb((l && l.parameter) || {}); }); } catch (e) {}
   var q = {};
   (location.search.slice(1) + '&' + location.hash.slice(1)).split('&').forEach(function (kv) { if (!kv) return; var p = kv.split('='); try { q[decodeURIComponent(p[0])] = decodeURIComponent(p[1] || '1'); } catch (e) {} });
-  cb(q);
+  setTimeout(function () { cb(q); }, 0);
 }
 function kirimPublik(aksi, data) { return kirim(aksi, data).then(function (r) { if (r && r.ok) return r.data; var e = new Error((r && r.error) || 'Terjadi kesalahan.'); e.kode = r && r.kode; throw e; }); }
 function jenisPendek(p) { return p === 'ikhwan' ? 'Khusus ikhwan' : p === 'akhawat' ? 'Khusus akhawat' : 'Ikhwan & akhawat'; }
