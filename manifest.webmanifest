@@ -1,0 +1,17 @@
+{
+  "name": "KHOBAR · Kelas Halaqoh Bahasa Arab",
+  "short_name": "KHOBAR",
+  "description": "Aplikasi Kelas Halaqoh Bahasa Arab",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFFFFF",
+  "theme_color": "#095249",
+  "lang": "id",
+  "icons": [
+    { "src": "ikon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "ikon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "ikon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
