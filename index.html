@@ -103,6 +103,7 @@ textarea.input.mono{font-size:13px;font-family:ui-monospace,Menlo,monospace;min-
 .avatar{width:36px;height:36px;border-radius:50%;background:var(--aksen-muda);color:var(--aksen-tua);display:grid;place-items:center;font-weight:700;font-size:14px;flex:none}
 .avatar.m{background:var(--merek);color:#fff}
 .konten{padding:4px 14px 84px;max-width:1100px;margin:0 auto}
+.konten:has(.fab){padding-bottom:110px}
 .botnav{position:fixed;left:0;right:0;bottom:0;z-index:30;background:#fff;border-top:1px solid var(--garis);display:flex;padding:6px 6px calc(6px + env(safe-area-inset-bottom));height:calc(var(--nav-h) + env(safe-area-inset-bottom))}
 .botnav button{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border-radius:12px;color:var(--muted);font-size:11px;font-weight:500;white-space:nowrap}
 .botnav button.on{color:var(--merek)}
@@ -135,7 +136,7 @@ textarea.input.mono{font-size:13px;font-family:ui-monospace,Menlo,monospace;min-
 /* ---------- kartu & komponen ---------- */
 .kartu{background:#fff;border-radius:var(--r);box-shadow:var(--bayang);padding:16px}
 .kartu+.kartu{margin-top:12px}
-.judul-bag{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:22px 2px 10px}
+.judul-bag{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:22px 2px 10px;flex-wrap:wrap}.judul-bag>h2{flex:1 1 190px;min-width:0}
 .judul-bag h2{font-size:15px;font-weight:700}
 .sapa{margin:6px 2px 14px}.sapa small{color:var(--muted);font-size:13px}.sapa h2{font-size:20px;font-weight:700;line-height:1.3}
 .hari{display:flex;align-items:center;gap:14px;padding:16px;border-radius:var(--r);color:#fff;background:linear-gradient(120deg,var(--merek),#13786B)}
@@ -181,12 +182,30 @@ textarea.input.mono{font-size:13px;font-family:ui-monospace,Menlo,monospace;min-
 .filter::-webkit-scrollbar{display:none}
 .filter button{height:34px;padding:0 14px;border-radius:99px;border:1.5px solid var(--garis);background:#fff;font-size:13px;font-weight:500;color:var(--muted);white-space:nowrap;flex:none}
 .filter button.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.filter.jadi-pemilih{display:none}
+.pemilih-baris{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:2px 0 12px}
+.toolbar .pemilih-baris{flex:1;min-width:0;margin:0}
+@media (min-width:700px){.pemilih-baris{grid-template-columns:repeat(auto-fill,minmax(220px,340px))}}
+.pemilih{display:flex;align-items:center;gap:10px;width:100%;min-width:0;min-height:52px;padding:7px 12px 7px 14px;border-radius:14px;border:1.5px solid var(--garis);background:#fff;text-align:left;color:var(--ink);transition:border-color .15s}
+.pemilih:active{border-color:var(--merek)}.pemilih.aktif{border-color:var(--merek);background:var(--merek-muda)}
+.pemilih .isi{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
+.pemilih small{font-size:11.5px;color:var(--muted);font-weight:500}
+.pemilih b{font-size:14px;font-weight:600;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}.pemilih.penuh{grid-column:1/-1}.pemilih.penuh+.pemilih:last-child{grid-column:1/-1}
+.pemilih>svg{flex:none;color:var(--muted);width:18px;height:18px}.pemilih .jml-p{flex:none;font-size:12px;font-weight:600;color:var(--muted);background:var(--bg);border-radius:99px;padding:2px 8px}.pemilih .jml-p:empty{display:none}.pemilih.aktif .jml-p{background:#fff;color:var(--merek)}
+.daftar-pilih{display:flex;flex-direction:column;margin:0 -4px}
+.daftar-pilih button{display:flex;align-items:center;gap:12px;min-height:50px;padding:10px 12px;border-radius:12px;text-align:left;font-size:15px;color:var(--ink);width:100%}
+.daftar-pilih button:active{background:var(--bg)}.daftar-pilih button.on{background:var(--merek-muda);color:var(--merek);font-weight:600}
+.daftar-pilih .nm{flex:1;min-width:0}.daftar-pilih .jml{font-size:12.5px;font-weight:600;color:var(--muted);background:var(--bg);border-radius:99px;padding:2px 9px}
+.daftar-pilih button.on .jml{background:#fff;color:var(--merek)}.daftar-pilih .tanda{width:20px;flex:none;color:var(--merek);display:flex}
+.daftar-pilih .kosong-cari{padding:18px 12px;color:var(--muted);font-size:14px;text-align:center}
 .daftar{display:flex;flex-direction:column;gap:8px}
 .baris{background:#fff;border-radius:14px;box-shadow:var(--bayang);padding:12px 14px;display:flex;gap:12px;align-items:center;text-align:left;width:100%}
 button.baris:active{background:#FAFBFD}
 .baris .isi{flex:1;min-width:0}.baris .isi b{display:block;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .baris .isi>span{display:block;font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .baris .kanan{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:none}
+@media (max-width:560px){.baris .isi b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}.baris .isi>span{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.baris .kanan{flex:0 1 auto;max-width:42%}.baris .kanan .chip{white-space:normal;text-align:center;line-height:1.25;height:auto;padding-top:3px;padding-bottom:3px}}
 .inisial{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-weight:700;flex:none;background:var(--merek-muda);color:var(--merek);font-size:14px}
 .inisial.p{background:var(--aksen-muda);color:var(--aksen-tua)}
 .inisial.kotak{border-radius:13px}
@@ -970,6 +989,60 @@ function layarMasuk() {
 }
 /* Permintaan ke Apps Script dari GitHub Pages: batas waktu, pesan yang jelas, satu kali ulang untuk permintaan baca awal. */
 var BATAS_FETCH = { bootstrap: 40000, login: 40000 };
+/* ---------- Pemilih: baris chip yang tidak muat di layar diganti satu kolom pilihan + daftar dengan pencarian ----------
+   Bekerja otomatis untuk setiap .filter (tombol aslinya tetap ada & yang diklik), jadi semua menu ikut seragam. */
+var LABEL_FILTER = { 'f-kitab': 'Kitab', 'f-tempat': 'Tempat', 'f-rentang': 'Periode', 'f-status': 'Status', 'f-fase': 'Tampilkan', 'f-fkz': 'Tampilkan', 'f-jenis-pg': 'Jenis pengingat', 'f-kd': 'Kelas' };
+function labelFilter(f, tombol) {
+  if (f.dataset.label) return f.dataset.label;
+  if (LABEL_FILTER[f.id]) return LABEL_FILTER[f.id];
+  if (/^f-kelas/.test(f.id)) return 'Kelas';
+  var m = tombol.length && /^Semua\s+([^·]+)/i.exec(tombol[0].textContent.trim());
+  return m ? m[1].trim().replace(/^./, function (c) { return c.toUpperCase(); }) : 'Pilih';
+}
+function teksTombol(b) { var t = b.textContent.replace(/\s+/g, ' ').trim(), m = /^(.*?)\s*·\s*(\d+)$/.exec(t); return m ? { nm: m[1], jml: m[2] } : { nm: t, jml: '' }; }
+function segarPemilih(f) {
+  var p = f.__pemilih; if (!p) return;
+  var on = f.querySelector('button.on') || f.querySelector('button'), t = on ? teksTombol(on) : { nm: '', jml: '' };
+  p.querySelector('b').textContent = t.nm; p.querySelector('.jml-p').textContent = '';
+  var semua = f.querySelector('button');
+  p.classList.toggle('aktif', !!on && on !== semua && /^Semua/i.test(semua ? semua.textContent.trim() : ''));
+}
+function bukaPemilih(f) {
+  var tombol = Array.prototype.slice.call(f.querySelectorAll('button')), label = labelFilter(f, tombol), cari = tombol.length > 7;
+  lembar({ judul: 'Pilih ' + label.toLowerCase(), isi: (cari ? '<div class="cari" style="margin-bottom:10px">' + ik('cari') + '<input class="input" data-cari placeholder="Cari ' + h(label.toLowerCase()) + '"></div>' : '') +
+    '<div class="daftar-pilih">' + tombol.map(function (b, i) { var t = teksTombol(b); return '<button data-i="' + i + '" class="' + (b.classList.contains('on') ? 'on' : '') + '"><span class="tanda">' + (b.classList.contains('on') ? ik('centang') : '') + '</span><span class="nm">' + h(t.nm) + '</span>' + (t.jml ? '<span class="jml">' + t.jml + '</span>' : '') + '</button>'; }).join('') + '<div class="kosong-cari hidden">Tidak ditemukan.</div></div>',
+    pasang: function (l) {
+      l.$$('[data-i]').forEach(function (x) { x.onclick = function () { var b = tombol[+x.dataset.i]; l.tutup(true); if (b && b.isConnected) { b.click(); setTimeout(function () { segarPemilih(f); }, 0); } }; });
+      var q = l.$('[data-cari]');
+      if (q) { setTimeout(function () { if (matchMedia('(min-width:700px)').matches) q.focus(); }, 50); q.oninput = function () { var v = q.value.toLowerCase().trim(), n = 0; l.$$('[data-i]').forEach(function (x) { var ya = !v || x.textContent.toLowerCase().indexOf(v) >= 0; x.classList.toggle('hidden', !ya); if (ya) n++; }); l.$('.kosong-cari').classList.toggle('hidden', n > 0); }; }
+    } });
+}
+function prosesFilter(akar) {
+  $$('.pemilih', akar).forEach(function (p) { if (!p.__filter || !p.__filter.isConnected) { var br = p.parentNode; p.remove(); if (br && br.classList.contains('pemilih-baris') && !br.children.length) br.remove(); } });
+  $$('.filter', akar).forEach(function (f) {
+    if (f.__pemilih && f.__pemilih.isConnected) return segarPemilih(f);
+    if (f.dataset.chip === '1' || !f.offsetParent && !f.classList.contains('jadi-pemilih')) return;
+    var tombol = f.querySelectorAll('button');
+    if (tombol.length < 2) return;
+    var luap = f.scrollWidth > f.clientWidth + 4;
+    if (!luap && tombol.length <= 6 && f.dataset.pemilih !== '1') return;
+    var p = document.createElement('button'); p.type = 'button'; p.className = 'pemilih';
+    p.innerHTML = '<span class="isi"><small>' + h(labelFilter(f, tombol)) + '</small><b></b></span><span class="jml-p"></span>' + ik('turun');
+    p.__filter = f; f.__pemilih = p; p.onclick = function () { bukaPemilih(f); };
+    if (/^(Kelas|Kitab)$/.test(labelFilter(f, tombol))) p.classList.add('penuh');
+    /* Filter yang berdampingan berbagi satu baris (mis. Bab + Tipe). */
+    var sb = f.previousElementSibling, baris = sb && sb.classList.contains('jadi-pemilih') && sb.__pemilih ? sb.__pemilih.parentNode : null;
+    if (!baris) { baris = document.createElement('div'); baris.className = 'pemilih-baris'; f.parentNode.insertBefore(baris, f); }
+    baris.appendChild(p); f.classList.add('jadi-pemilih'); segarPemilih(f);
+  });
+}
+var antreFilter = 0;
+function pantauFilter() {
+  var jalan = function () { antreFilter = 0; prosesFilter(document); };
+  new MutationObserver(function () { if (!antreFilter) antreFilter = requestAnimationFrame(jalan); }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+  addEventListener('resize', function () { if (!antreFilter) antreFilter = requestAnimationFrame(jalan); });
+}
+pantauFilter();
 function kirimFetch(aksi, data, token, ulang) {
   window.__khMinta = (window.__khMinta || 0) + 1;
   var ctl = window.AbortController ? new AbortController() : null, batas = BATAS_FETCH[aksi] || 90000;
@@ -1603,14 +1676,15 @@ VIEW.peserta = function (el) {
   muat(el, muatPesertaList(), function (list) {
     el.innerHTML = '<div class="toolbar"><div class="cari">' + ik('cari') + '<input class="input" id="q" placeholder="Cari nama, username, atau WA" value="' + h(FP.q) + '"></div>' +
       '<button class="btn btn-garis btn-kecil" id="b-impor">' + ik('unggah') + '<span>Impor</span></button><button class="btn btn-utama fab" id="b-tambah">' + ik('tambah') + 'Tambah peserta</button></div>' +
-      '<div class="filter" id="f-kelas"></div><div class="filter" id="f-lain"></div><div id="hasil"></div>';
+      '<div class="filter" id="f-kelas" data-pemilih="1"></div><div class="filter" id="f-lain" data-pemilih="1" data-label="Jenis kelamin"></div><div class="filter" id="f-lain2" data-pemilih="1" data-label="Status akun"></div><div id="hasil"></div>';
     var gambarFilter = function () {
       var opsi = [{ v: '', t: 'Semua kelas' }].concat(S.boot.kelas.filter(function (k) { return k.status === 'aktif'; }).map(function (k) { return { v: k.id, t: k.nama }; })).concat([{ v: '_tanpa', t: 'Tanpa kelas' }]);
       $('#f-kelas').innerHTML = opsi.map(function (o) { return '<button data-k="' + o.v + '" class="' + (FP.kelas === o.v ? 'on' : '') + '">' + h(o.t) + '</button>'; }).join('');
       var lain = [['jk', '', 'Semua'], ['jk', 'L', 'Ikhwan'], ['jk', 'P', 'Akhawat'], ['status', 'aktif', 'Aktif'], ['status', 'belum', 'Belum masuk'], ['status', 'nonaktif', 'Nonaktif'], ['status', 'semua', 'Semua status']];
-      $('#f-lain').innerHTML = lain.map(function (o, i) { return (i === 3 ? '<span style="width:1px;background:var(--garis);flex:none;margin:4px 2px"></span>' : '') + '<button data-f="' + o[0] + '" data-v="' + o[1] + '" class="' + (FP[o[0]] === o[1] ? 'on' : '') + '">' + o[2] + '</button>'; }).join('');
+      var tb = function (o) { return '<button data-f="' + o[0] + '" data-v="' + o[1] + '" class="' + (FP[o[0]] === o[1] ? 'on' : '') + '">' + o[2] + '</button>'; };
+      $('#f-lain').innerHTML = lain.slice(0, 3).map(tb).join(''); $('#f-lain2').innerHTML = lain.slice(3).map(tb).join('');
       $$('#f-kelas button').forEach(function (b) { b.onclick = function () { FP.kelas = b.dataset.k; gambarFilter(); gambarDaftar(); }; });
-      $$('#f-lain button').forEach(function (b) { b.onclick = function () { FP[b.dataset.f] = b.dataset.v; gambarFilter(); gambarDaftar(); }; });
+      $$('#f-lain button, #f-lain2 button').forEach(function (b) { b.onclick = function () { FP[b.dataset.f] = b.dataset.v; gambarFilter(); gambarDaftar(); }; });
     };
     var gambarDaftar = function () {
       var q = FP.q.toLowerCase();
