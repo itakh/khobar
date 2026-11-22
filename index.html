@@ -3883,7 +3883,7 @@ function gambarNilai(el, d) {
       }).join('') + '</tbody></table></div>' +
       (d.ujian.length ? '<p class="hint hanya-laptop" style="margin:8px 4px">' + d.ujian.map(function (u, i) { return '<b>' + kode[i] + '</b> ' + h(u.judul); }).join(' · ') + '. Angka 0 merah = tidak mengerjakan.</p>' : '');
   }
-  html += '<p class="hint" style="margin:8px 4px">Ketuk nama untuk melihat dan mengunduh rapor peserta. Ujian yang tidak dikerjakan sampai ditutup (dan tanpa susulan yang masih berjalan) dihitung 0. Peserta yang bergabung setelah suatu ujian tidak dihitung pada ujian itu.</p>';
+  html += '<p class="hint" style="margin:8px 4px">Peringkat: nilai akhir tertinggi lebih dulu; bila nilainya sama, yang total waktu mengerjakan ujian &amp; tesnya lebih singkat di atas. Ketuk nama untuk melihat dan mengunduh rapor peserta. Ujian yang tidak dikerjakan sampai ditutup (dan tanpa susulan yang masih berjalan) dihitung 0. Peserta yang bergabung setelah suatu ujian tidak dihitung pada ujian itu.</p>';
   el.innerHTML = html;
   $$('[data-rp]', el).forEach(function (b) { b.onclick = function () { bukaRapor(k.id, b.dataset.rp); }; });
   if ($('#b-unduh-n', el)) $('#b-unduh-n', el).onclick = function () { menuUnduh(function () { return lapRekapNilai(d); }); };
