@@ -1,5 +1,5 @@
 // Penyimpan sementara agar KHOBAR tetap terbuka saat sinyal lemah. Selalu mencoba versi terbaru dulu (network-first).
-var CACHE = 'khobar-15.4-94d6edd6';
+var CACHE = 'khobar-16.0-fce9aaf9';
 var INTI = ['./', './index.html', './manifest.webmanifest', './ikon-192.png', './ikon-512.png', './favicon-48.png'];
 self.addEventListener('install', function (e) { e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(INTI); }).then(function () { return self.skipWaiting(); })); });
 self.addEventListener('activate', function (e) {

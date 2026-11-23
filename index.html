@@ -680,6 +680,24 @@ iframe.drive-pemutar{width:100%;height:360px;border:0;border-radius:10px;backgro
 .grid-no button{position:relative}
 #ujian.coba::after,#kuis.coba::after{content:'Mode coba · tidak disimpan';position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom));z-index:30;background:var(--aksen);color:#1B2638;font-size:11.5px;font-weight:700;padding:4px 12px;border-radius:99px;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,.15)}
 #kuis.coba::after{top:calc(64px + env(safe-area-inset-top));bottom:auto}.grid-no .tanda-stim{position:absolute;top:2px;right:3px;opacity:.75;line-height:0}.grid-no .tanda-stim svg{width:11px;height:11px}
+
+/* Tahap 16: persiapan kelas (guru) & presensi (peserta) */
+.persiapan{margin-top:12px}
+.persiapan .pr-kepala{display:flex;gap:10px;align-items:flex-start}
+.persiapan .pr-kepala .isi{flex:1;min-width:0}.persiapan .pr-kepala b{display:block}
+.persiapan .pr-kepala span.ket{font-size:12.5px;color:var(--muted)}
+.pr-cap{display:flex;gap:8px;align-items:flex-start;margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--bg);font-size:13.5px}
+.pr-cap svg{flex:none;margin-top:2px;color:var(--merek)}.pr-cap small{display:block;font-size:11.5px;color:var(--muted);font-weight:600}
+.pr-cap .teks-soal{min-width:0}.pr-cap.kosong{color:var(--muted)}
+.pr-rekap{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.pr-rekap span{display:inline-flex;align-items:baseline;gap:5px;padding:5px 10px;border-radius:10px;background:var(--b,var(--bg));color:var(--c,var(--muted));font-size:12px;font-weight:600}
+.pr-rekap span b{font-size:15px}
+.pr-aksi{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.presensi .st-p{display:flex;gap:6px;margin-top:10px}
+.presensi .st-p button{flex:1;min-height:42px;border-radius:12px;border:1.5px solid var(--garis);background:#fff;font-weight:600;font-size:13.5px;color:var(--muted)}
+.presensi .st-p button.on{border-color:var(--c);background:var(--b);color:var(--c)}
+.presensi .st-p button[disabled]{opacity:.5}
+.presensi .hint-p{font-size:12.5px;color:var(--muted);margin-top:8px}
 </style>
 </head>
 <body>
@@ -1385,8 +1403,12 @@ VIEW.beranda = function (el) {
     var saya = S.boot.saya, staf = isAdmin() || isGuru() || isStaf(), html = '<div class="sapa"><small>' + sapaan() + ',</small><h2>' + h(isGuru() ? saya.namaSapaan : saya.nama) + '</h2></div>';
     if (isPeserta() && d.belumLengkap && d.belumLengkap.length) html += '<button class="kartu banner" data-ke="saya"><span class="bulat">' + ik('form') + '</span><span class="isi"><b>Lengkapi profil Anda</b><span>Belum diisi: ' + h(d.belumLengkap.join(', ')) + '</span></span>' + ik('kanan') + '</button>';
     html += kartuHari(d.hariIni, d.jadwal);
-    /* Absensi hari ini (staf): satu baris per pertemuan. */
-    if (d.absenHariIni && d.absenHariIni.length) html += '<div class="kartu cek-list br-ringkas">' + d.absenHariIni.map(function (p) {
+    /* Persiapan kelas (staf): kartu H-1 dan hari H, dengan capaian terakhir & rencana kehadiran. */
+    if (d.persiapan) html += d.persiapan.map(kartuPersiapan).join('');
+    /* Kehadiran peserta (rencana H-1 / hari H). */
+    (d.presensi || []).forEach(function (x) { html += kartuPresensi(x); });
+    /* Absensi hari ini (staf, server lama). */
+    if (!d.persiapan && d.absenHariIni && d.absenHariIni.length) html += '<div class="kartu cek-list br-ringkas">' + d.absenHariIni.map(function (p) {
       return '<button class="item" data-isi="' + h(p.pid) + '" data-kls="' + p.kelasId + '"><span class="bulat" style="' + (p.diisi ? 'background:var(--hijau-muda);color:var(--hijau)' : 'background:var(--merah-muda);color:var(--merah)') + '">' + ik('centang') + '</span><div>' + h(p.nama) +
         '<small>' + (p.diisi ? p.rekap.H + ' dari ' + p.rekap.total + ' hadir' + (p.tidakHadir.length ? ' · ' + p.tidakHadir.length + ' tidak hadir' : '') : 'Belum diabsen' + (p.mandiri ? ' · ' + p.mandiri + ' sudah absen mandiri' : '')) + '</small></div>' +
         '<span class="btn ' + (p.diisi ? 'btn-garis' : 'btn-utama') + ' btn-kecil">' + (p.diisi ? 'Lihat' : 'Isi absensi') + '</span></button>';
@@ -1456,6 +1478,8 @@ VIEW.beranda = function (el) {
       b.onclick = function () { proses(b, function () { return call('absenMandiri', { kelasId: b.dataset.hadir }); }).then(function () { toast('Kehadiran tercatat. Jazakumullahu khairan.', 'sukses'); render(); }, function () {}); };
     });
     pasangJadwal(el, render);
+    pasangPersiapan(el, d);
+    pasangPresensi(el, d);
     pasangKartuUjian(el);
     pasangKartuKuis(el, render);
     $$('[data-mt]', el).forEach(function (b) { b.onclick = function () { bukaMateri(b.dataset.mt, render); }; });
@@ -1469,6 +1493,99 @@ VIEW.beranda = function (el) {
   if (awal && (awal.lama || Date.now() - awal.waktu < 60000)) { if (!awal.lama) S.berandaAwal = null; return gambarBeranda(awal.data); }
   muatSegar(el, 'beranda', {}, gambarBeranda);
 };
+
+
+/* ================= TAHAP 16: PERSIAPAN KELAS & PRESENSI PESERTA ================= */
+function htmlCapaian(cap, kosongTeks) {
+  return cap ? '<div class="pr-cap">' + ik('buku', 'mini') + '<span><small>Terakhir dibahas' + (cap.tanggal ? ' · ' + h(tglPendek(cap.tanggal)) : '') + '</small><span class="teks-soal">' + teksKaya(cap.teks) + '</span></span></div>'
+    : '<div class="pr-cap kosong">' + ik('buku', 'mini') + '<span>' + h(kosongTeks || 'Capaian materi belum dicatat.') + '</span></div>';
+}
+function rekapRencana(n, diisi) {
+  var x = [['H', 'Hadir'], ['I', 'Izin'], ['S', 'Sakit']].concat(diisi || n.A ? [['A', 'Alpa']] : []);
+  return '<div class="pr-rekap">' + x.map(function (y) { return '<span style="--c:' + ST[y[0]].c + ';--b:' + ST[y[0]].bg + '"><b>' + (n[y[0]] || 0) + '</b>' + y[1] + '</span>'; }).join('') +
+    (n.belum ? '<span><b>' + n.belum + '</b>Belum mengisi</span>' : '') + '</div>';
+}
+function kartuPersiapan(p) {
+  var n = p.rekap, kapan = p.besok ? 'Besok' : 'Hari ini';
+  var ket = [kapan + ', ' + tglPendek(p.tanggal), p.labelWaktu, p.online ? 'Online' : p.tempat, p.jumlah + ' peserta'].filter(Boolean).join(' · ');
+  var status = p.diisi ? '<span class="chip hijau">' + ik('centang', 'mini') + 'Absensi tersimpan</span>' : p.presensiPeserta ? '<span class="chip merek">' + (p.besok ? 'Rencana kehadiran' : 'Presensi peserta') + '</span>' : '';
+  var aksi = [];
+  if (!p.besok) aksi.push('<button class="btn ' + (p.diisi ? 'btn-garis' : 'btn-utama') + ' btn-kecil" data-pr-absen="' + h(p.pid) + '" data-kls="' + p.kelasId + '">' + ik('centang') + (p.diisi ? 'Lihat absensi' : p.presensiPeserta ? 'Periksa absensi' : 'Isi absensi') + '</button>');
+  else aksi.push('<button class="btn btn-garis btn-kecil" data-pr-daftar="' + h(p.pid) + '">' + ik('kartu') + 'Daftar</button>');
+  if (!p.besok && p.kelola) aksi.push('<button class="btn btn-garis btn-kecil" data-pr-capaian="' + h(p.pid) + '">' + ik('pensil') + 'Capaian</button>');
+  if (p.presensiPeserta && n.belum && !p.diisi && p.kelola) aksi.push('<button class="btn btn-garis btn-kecil" data-pr-ingat="' + h(p.pid) + '" data-kls="' + p.kelasId + '">' + ik('pesan') + 'Ingatkan</button>');
+  if (p.besok && p.kelola) aksi.push('<button class="btn btn-teks btn-kecil" data-pr-libur="' + h(p.pid) + '">' + ik('kal') + 'Liburkan</button>');
+  return '<div class="kartu persiapan"><div class="pr-kepala"><div class="isi"><b>' + h(p.nama) + '</b><span class="ket">' + h(ket) + '</span></div>' + status + '</div>' +
+    htmlCapaian(p.capaian) + (p.presensiPeserta || p.diisi ? rekapRencana(n, p.diisi) : '') + '<div class="pr-aksi">' + aksi.join('') + '</div></div>';
+}
+function pasangPersiapan(el, d) {
+  var cari = function (pid) { return (d.persiapan || []).filter(function (x) { return x.pid === pid; })[0]; };
+  $$('[data-pr-absen]', el).forEach(function (b) { b.onclick = function () { bukaPertemuan(b.dataset.kls, b.dataset.prAbsen, render); }; });
+  $$('[data-pr-daftar]', el).forEach(function (b) { b.onclick = function () { daftarRencana(cari(b.dataset.prDaftar)); }; });
+  $$('[data-pr-capaian]', el).forEach(function (b) { b.onclick = function () { var p = cari(b.dataset.prCapaian); aturCapaian(p, p.capaian && p.capaian.tanggal === p.tanggal ? p.capaian.teks : '', render); }; });
+  $$('[data-pr-ingat]', el).forEach(function (b) { b.onclick = function () { FPG.kelas = b.dataset.kls; FPG.jenis = 'rencana'; FPG.pilih = b.dataset.prIngat; FPG.target = 'belum'; buka('pengingat'); }; });
+  $$('[data-pr-libur]', el).forEach(function (b) {
+    b.onclick = function () { var p = cari(b.dataset.prLibur); aturPertemuan({ pid: p.pid, kelasId: p.kelasId, nama: p.nama, tanggal: p.tanggal, status: 'terjadwal', jenis: p.jenis, labelWaktu: p.labelWaktu }, render); };
+  });
+}
+function daftarRencana(p) {
+  var urut = { H: 0, I: 1, S: 2, A: 3, '': 4 };
+  var list = p.daftar.slice().sort(function (a, b) { return urut[a.status] - urut[b.status] || a.nama.localeCompare(b.nama, 'id'); });
+  lembar({ judul: 'Rencana kehadiran · ' + tglPendek(p.tanggal), isi: '<div class="hint" style="margin:-6px 0 10px">' + h(p.nama) + (p.labelWaktu ? ' · ' + h(p.labelWaktu) : '') + '</div>' + rekapRencana(p.rekap, false) +
+    '<div class="cek-list" style="margin-top:10px">' + list.map(function (x) {
+      return '<div class="item"><span class="inisial ' + (x.jk === 'P' ? 'p' : '') + '" style="width:32px;height:32px;font-size:11px">' + h(inisial(x.nama)) + '</span><div>' + h(x.nama) + (x.catatan ? '<small>' + h(x.catatan) + '</small>' : '') + '</div>' +
+        (x.status ? chipSt(x.status) : '<span class="chip">Belum mengisi</span>') + '</div>';
+    }).join('') + '</div><p class="hint" style="margin-top:10px">Yang belum mengisi sampai akhir hari pertemuan tercatat Alpa. Anda tetap bisa mengoreksi di lembar absensi.</p>',
+    kaki: '<button class="btn btn-utama" data-batal>Tutup</button>' });
+}
+function aturCapaian(p, nilai, selesai) {
+  lembar({ judul: 'Capaian materi · ' + tglPendek(p.tanggal), isi: '<div class="hint" style="margin:-6px 0 12px">' + h(p.nama) + '</div><form>' +
+    fld('Sudah sampai mana?', 'materi', nilai, { ph: 'contoh: Dars 9, hal. 59–63 sampai latihan 5', hint: 'Tampil di kartu persiapan pertemuan berikutnya dan di beranda peserta.' }) + '</form>',
+    kaki: '<button class="btn btn-garis" data-batal>Batal</button><button class="btn btn-utama" data-simpan>' + ik('centang') + 'Simpan</button>',
+    pasang: function (l) {
+      l.$('[data-simpan]').onclick = function () {
+        var m = l.$('[name=materi]').value.trim();
+        if (!m) return toast('Tulis capaian materinya dulu.', 'galat');
+        proses(this, function () { return call('pertemuanAtur', { kelasId: p.kelasId, pid: p.pid, aksi: 'capaian', materi: m }); }).then(function () { l.tutup(); toast('Capaian tersimpan', 'sukses'); if (selesai) selesai(); }, function () {});
+      };
+    } });
+}
+var STATUS_PRESENSI = [['H', 'Hadir'], ['I', 'Izin'], ['S', 'Sakit']];
+function kartuPresensi(x) {
+  var judul = x.fase === 'rencana' ? 'Rencana kehadiran' : 'Kehadiran hari ini';
+  var ket = [(x.besok ? 'Besok' : 'Hari ini') + ', ' + tglPendek(x.tanggal), x.labelWaktu, x.online ? 'Online' : x.tempat].filter(Boolean).join(' · ');
+  var petunjuk = x.dikunci ? 'Sudah dicatat pengajar. Hubungi pengajar bila perlu diubah.'
+    : x.status === 'H' ? (x.fase === 'rencana' ? 'Rencana hadir tercatat. Bila ada halangan mendadak, ubah ke Izin atau Sakit.' : 'Tercatat hadir. Jazakumullahu khairan.')
+    : x.status ? 'Tercatat ' + ST[x.status].t.toLowerCase() + (x.catatan ? ': ' + x.catatan : '') + '. Semoga Allah mudahkan.'
+    : x.fase === 'rencana' ? 'Apakah Anda akan hadir?' : 'Belum diisi. Bila tidak diisi sampai akhir hari ini, tercatat Alpa.';
+  return '<div class="kartu presensi" data-pres="' + h(x.pid) + '"><div class="pr-kepala" style="display:flex;gap:10px;align-items:flex-start"><div style="flex:1;min-width:0"><b>' + judul + '</b><div class="hint">' + h(x.nama) + ' · ' + h(ket) + '</div></div>' +
+    (x.dikunci && x.status ? chipSt(x.status) : '') + '</div>' +
+    '<div class="st-p">' + STATUS_PRESENSI.map(function (s) { return '<button type="button" data-ps="' + s[0] + '" style="--c:' + ST[s[0]].c + ';--b:' + ST[s[0]].bg + '" class="' + (x.status === s[0] ? 'on' : '') + '"' + (x.dikunci ? ' disabled' : '') + '>' + s[1] + '</button>'; }).join('') + '</div>' +
+    '<div class="hint-p">' + h(petunjuk) + (x.status && !x.dikunci && x.fase === 'rencana' ? ' <a href="#" data-ps-batal>Batalkan isian</a>' : '') + '</div>' +
+    (x.capaian ? htmlCapaian(x.capaian) : '') +
+    (x.online && x.tautan && !x.besok ? '<a class="btn btn-utama btn-kecil" style="margin-top:10px" href="' + h(x.tautan) + '" target="_blank" rel="noopener">' + ik('tautan') + 'Masuk kelas online</a>' : '') + '</div>';
+}
+function pasangPresensi(el, d) {
+  $$('[data-pres]', el).forEach(function (kartu) {
+    var x = (d.presensi || []).filter(function (y) { return y.pid === kartu.dataset.pres; })[0]; if (!x) return;
+    var kirimP = function (st, catatan, btn) {
+      return proses(btn, function () { return call('presensiIsi', { kelasId: x.kelasId, pid: x.pid, status: st, catatan: catatan || '' }); }).then(function () {
+        toast(!st ? 'Isian dibatalkan' : st === 'H' ? (x.fase === 'rencana' ? 'Rencana hadir tercatat' : 'Kehadiran tercatat') : ST[st].t + ' tercatat', 'sukses'); render();
+      }, function () {});
+    };
+    $$('[data-ps]', kartu).forEach(function (b) {
+      b.onclick = function () {
+        var st = b.dataset.ps;
+        if (st === 'H') return kirimP('H', '', b);
+        lembar({ judul: ST[st].t + ' · ' + tglPendek(x.tanggal), isi: '<div class="hint" style="margin:-6px 0 12px">' + h(x.nama) + '</div><form>' + fld('Keterangan (opsional)', 'catatan', x.status === st ? x.catatan : '', { ph: st === 'S' ? 'contoh: demam' : 'contoh: ada acara keluarga' }) + '</form>',
+          kaki: '<button class="btn btn-garis" data-batal>Batal</button><button class="btn btn-utama" data-simpan>Simpan</button>',
+          pasang: function (l) { l.$('[data-simpan]').onclick = function () { var c = l.$('[name=catatan]').value; var tb = this; kirimP(st, c, tb).then(function () { l.tutup(true); }); }; } });
+      };
+    });
+    var bt = $('[data-ps-batal]', kartu);
+    if (bt) bt.onclick = function (e) { e.preventDefault(); kirimP('', '', null); };
+  });
+}
 
 /* ---------- jadwal ---------- */
 var FJ = { dari: null };
@@ -1515,7 +1632,7 @@ function infoKelasHtml(k, untukPeserta) {
     barisDetail('Tempat', '', h(k.tempat) + (k.alamat && !k.online ? '<br><span class="hint">' + h(k.alamat) + '</span>' : '')) +
     barisDetail('Peserta', JENIS_PST[k.peserta]) + barisDetail('Jadwal rutin', [k.labelHari, k.labelWaktu].filter(Boolean).join(', ')) +
     (k.online ? barisDetail('Tautan pertemuan', '', k.tautan ? '<a href="' + h(k.tautan) + '" target="_blank" rel="noopener">' + h(k.tautan) + '</a>' : '') : '') +
-    (k.online ? barisDetail('Absen mandiri', k.absenMandiri ? 'Ya, peserta bisa menekan "Saya hadir" saat pertemuan' : 'Tidak') : '') +
+    barisDetail('Presensi', k.presensiPeserta ? 'Diisi peserta (rencana H-1, bisa diubah sampai akhir hari H)' : k.online && k.absenMandiri ? 'Absen mandiri saat pertemuan online' : 'Diisi pengajar') +
     barisDetail('Mulai', k.mulai ? fTgl(k.mulai) : '');
 }
 function detailKelas(k) {
@@ -1622,7 +1739,7 @@ function formKelas(k) {
       pasang: function (l) { l.$$('[data-ke]').forEach(function (b) { b.onclick = function () { l.tutup(); buka(b.dataset.ke); }; }); } });
   }
   k = k || { peserta: 'ikhwan', hari: '', bobotUjian: +p.bobotUjian, bobotTes: +p.bobotTes, bobotHadir: +p.bobotHadir, status: 'aktif', mulai: S.boot.hariIni,
-    guruIds: isGuru() ? [S.boot.saya.id] : [], absenMandiri: true };
+    guruIds: isGuru() ? [S.boot.saya.id] : [], absenMandiri: true, presensiPeserta: true };
   var kitabOps = [{ v: '', t: '— Pilih kitab —' }].concat(S.boot.kitab.map(function (x) { return { v: x.id, t: x.nama }; }));
   var tempatOps = [{ v: '', t: '— Pilih tempat —' }].concat(S.boot.tempat.filter(function (t) { return t.aktif || t.id === k.tempatId; }).map(function (x) { return { v: x.id, t: x.nama + (x.jenis === 'online' ? ' (online)' : '') }; }));
   lembar({ judul: baru ? 'Tambah kelas' : 'Ubah kelas', lebar: true, isi: '<form>' +
@@ -1636,7 +1753,8 @@ function formKelas(k) {
     '<div class="grid3 jam">' + fld('Jam mulai', 'jamMulai', k.jamMulai, { tipe: 'time' }) + fld('Jam selesai', 'jamSelesai', k.jamSelesai, { tipe: 'time' }) + fld('Keterangan waktu', 'waktu', k.waktu, { ph: 'Ba\'da Maghrib' }) + '</div>' +
     '<p class="hint" style="margin:-8px 0 14px">Isi jam, keterangan waktu, atau keduanya. Contoh: "Ba\'da Maghrib" tanpa jam pasti.</p>' +
     '<div id="f-tautan">' + fld('Tautan pertemuan online', 'tautan', k.tautan, { ph: 'https://meet.google.com/…', tipe: 'url' }) +
-    '<label class="cek" style="align-items:center"><span style="flex:1">Absen mandiri<small>Peserta bisa menekan "Saya hadir" mulai 15 menit sebelum sampai 30 menit setelah pertemuan. Guru/asisten tetap bisa mengoreksi.</small></span><span class="saklar"><input type="checkbox" name="absenMandiri"' + (k.absenMandiri !== false || !k.online ? ' checked' : '') + '><span></span></span></label></div>' +
+    '</div>' +
+    '<label class="cek" style="align-items:center;margin-bottom:14px"><span style="flex:1">Presensi oleh peserta<small>Peserta mengisi rencana kehadiran mulai sehari sebelum pertemuan dan bisa mengubahnya sampai akhir hari pertemuan. Yang tidak mengisi tercatat Alpa. Guru dan asisten tetap bisa mengoreksi.</small></span><span class="saklar"><input type="checkbox" name="presensiPeserta"' + (k.presensiPeserta !== false ? ' checked' : '') + '><span></span></span></label>' +
     '<div class="grid2">' + fld('Tanggal mulai', 'mulai', k.mulai, { tipe: 'date', hint: 'Pertemuan rutin dihitung mulai tanggal ini.' }) +
     (baru ? '' : fld('Status', 'status', k.status, { pilihan: [{ v: 'aktif', t: 'Aktif' }, { v: 'selesai', t: 'Selesai (diarsipkan)' }] })) + '</div>' +
     '<div class="sub-judul">Bobot nilai akhir</div><div class="grid3">' + fld('Ujian (%)', 'bobotUjian', k.bobotUjian, { mode: 'numeric', tipe: 'number', attr: ' min="0" max="100"' }) +
@@ -2201,7 +2319,7 @@ VIEW.absensi = function (el) {
     var baris = function (p) {
       var dt = tglObj(p.tanggal), kini = p.tanggal === hariIni, redup = p.status !== 'terjadwal', lalu = p.tanggal <= hariIni;
       var kanan = p.status === 'libur' ? '<span class="chip aksen">Libur</span>' : p.status === 'pindah' ? '<span class="chip">Dipindah</span>' :
-        p.diisi ? '<span class="chip hijau">' + p.rekap.H + '/' + p.rekap.total + ' hadir</span>' : lalu ? '<span class="chip merah">Belum diabsen</span>' + (p.mandiri ? '<span class="hint">' + p.mandiri + ' absen mandiri</span>' : '') : (p.jenis === 'tambahan' ? '<span class="chip merek">Tambahan</span>' : '');
+        p.diisi ? '<span class="chip hijau">' + p.rekap.H + '/' + p.rekap.total + ' hadir</span>' : lalu ? '<span class="chip merah">Belum diabsen</span>' + (p.mandiri ? '<span class="hint">' + p.mandiri + (p.presensiPeserta ? ' sudah mengisi' : ' absen mandiri') + '</span>' : '') : p.rekap && p.rekap.total ? '<span class="chip merek">Rencana: ' + p.rekap.H + ' hadir</span>' : (p.jenis === 'tambahan' ? '<span class="chip merek">Tambahan</span>' : '');
       var judul = p.status === 'terjadwal' ? 'Pertemuan ke-' + p.ke : p.status === 'libur' ? 'Diliburkan' : 'Dipindah ke ' + tglPendek(p.pindahKe);
       var sub = [HARI[dt.getDay()], p.status === 'libur' ? p.alasan : p.status === 'terjadwal' ? p.labelWaktu : '', p.jenis === 'tambahan' ? 'tambahan' : '', p.pindahDari ? 'pengganti ' + tglPendek(p.pindahDari) : '', p.materi].filter(Boolean).join(' · ');
       var bisa = p.status === 'terjadwal' ? (lalu || d.hak.kelola) : d.hak.kelola;
@@ -2211,6 +2329,7 @@ VIEW.absensi = function (el) {
     box.innerHTML = '<div class="kartu" style="display:flex;gap:12px;align-items:center;margin-bottom:12px"><div style="flex:1;min-width:0"><b>' + h(k.nama) + '</b><div class="hint">' + h([k.labelHari, k.labelWaktu].filter(Boolean).join(', ')) + (k.guru.length ? ' · ' + h(namaGuru(k)) : '') + ' · ' + k.jumlah + ' peserta</div></div>' +
       '<button class="btn btn-garis btn-kecil" id="b-rekap">' + ik('grafik') + 'Rekap</button>' + (d.hak.kelola ? '<button class="btn btn-garis btn-kecil" id="b-tambah-pt">' + ik('tambah') + '<span class="hanya-laptop-i">Pertemuan tambahan</span></button>' : '') + '</div>' +
       (belum ? '<div class="peringatan">' + ik('awas') + '<span>' + belum + ' pertemuan yang sudah lewat belum diabsen.</span></div>' : '') +
+      (d.capaian ? htmlCapaian(d.capaian) : '') +
       (depan.length ? '<div class="judul-bag" style="margin-top:6px"><h2>Akan datang</h2>' + (d.hak.kelola ? '<span class="hint">Ketuk untuk meliburkan atau memindah</span>' : '') + '</div>' + depan.map(baris).join('') : '') +
       '<div class="judul-bag"><h2>Hari ini &amp; sebelumnya</h2></div>' + (lewat.length ? lewat.map(baris).join('') : kosongHtml('kal', 'Belum ada pertemuan', 'Pertemuan pertama: ' + (depan[0] ? fTgl(depan[0].tanggal, true) : '-'))) +
       '<p class="hint" style="margin:14px 4px">Persentase hadir = Hadir ÷ semua pertemuan yang diabsen. Izin dan Sakit dihitung tidak hadir.</p>';
@@ -2233,23 +2352,23 @@ function bukaPertemuan(kelasId, pid, selesai) {
 }
 function lembarAbsensi(d, selesai) {
   var p = d.pertemuan, ro = !d.boleh, status = {}, cat = {};
-  var adaMandiri = d.peserta.some(function (s) { return s.mandiri; });
-  d.peserta.forEach(function (s) { status[s.id] = s.status || (p.diisi ? 'H' : adaMandiri ? 'A' : 'H'); cat[s.id] = s.catatan; });
+  var adaMandiri = d.peserta.some(function (s) { return s.mandiri; }), presensiP = !!p.presensiPeserta;
+  d.peserta.forEach(function (s) { status[s.id] = s.status || (p.diisi ? 'H' : adaMandiri || presensiP ? 'A' : 'H'); cat[s.id] = s.catatan; });
   var babPilih = (p.babIds || []).slice();
   var judul = 'Absensi · ' + tglPendek(p.tanggal) + (p.ke ? ' · ke-' + p.ke : '');
   var info = d.tercatat ? '<div class="info" style="background:var(--hijau-muda);color:#0F5E3F">' + ik('centang') + '<span>Tersimpan · diisi <b>' + h(d.tercatat.pengisi) + '</b> ' + h(d.tercatat.waktu.slice(0, 10) === p.tanggal ? 'pukul ' + d.tercatat.waktu.slice(11) : fTgl(d.tercatat.waktu.slice(0, 10))) + '</span></div>'
     : ro ? '<div class="peringatan">' + ik('kunci2') + '<span>' + h(d.alasan) + '</span></div>'
-      : '<div class="info">' + ik('infoi') + '<span>' + (adaMandiri ? 'Peserta yang sudah absen mandiri ditandai <b>Hadir</b>; yang lain ditandai <b>Alpa</b>. Ubah bila perlu, lalu simpan.' : 'Belum diisi. Semua peserta sudah ditandai <b>Hadir</b>. Ubah hanya yang tidak hadir, lalu simpan.') + '</span></div>';
+      : '<div class="info">' + ik('infoi') + '<span>' + (presensiP ? 'Status diisi peserta sendiri; yang belum mengisi ditandai <b>Alpa</b>. Koreksi bila perlu, lalu simpan.' : adaMandiri ? 'Peserta yang sudah absen mandiri ditandai <b>Hadir</b>; yang lain ditandai <b>Alpa</b>. Ubah bila perlu, lalu simpan.' : 'Belum diisi. Semua peserta sudah ditandai <b>Hadir</b>. Ubah hanya yang tidak hadir, lalu simpan.') + '</span></div>';
   lembar({ judul: judul, lebar: true, tanpaFokus: true, isi: '<div class="hint" style="margin:-6px 0 10px">' + h(d.kelas.nama) + (p.labelWaktu ? ' · ' + h(p.labelWaktu) : '') + (p.jenis === 'tambahan' ? ' · pertemuan tambahan' : '') + (p.pindahDari ? ' · pengganti ' + h(tglPendek(p.pindahDari)) : '') + '</div>' + info +
     (d.peserta.length ? '<div class="ringkas-p" id="ringkas-p"></div>' +
       (ro ? '' : '<div style="display:flex;justify-content:space-between;align-items:center;margin:2px 0 4px"><span class="hint">H Hadir · S Sakit · I Izin · A Alpa</span><button class="btn btn-teks btn-kecil" id="b-semua-h">Semua hadir</button></div>') +
       '<div id="list-p">' + d.peserta.map(function (s) {
         return '<div class="p-baris" data-id="' + s.id + '"><div class="p-atas"><span class="inisial ' + (s.jk === 'P' ? 'p' : '') + '">' + h(inisial(s.nama)) + '</span><span class="isi"><b>' + h(s.nama) + '</b><span>' +
-          [s.mandiri ? 'absen mandiri' : '', s.keluar ? 'sudah keluar dari kelas' : '', !s.status && p.diisi ? 'belum tercatat' : ''].filter(Boolean).join(' · ') + '</span></span>' +
+          [s.sendiri ? 'diisi sendiri' + (s.catatan ? ': ' + s.catatan : '') : s.mandiri ? 'absen mandiri' : '', s.otomatis ? 'tidak mengisi' : '', s.keluar ? 'sudah keluar dari kelas' : '', !s.status && p.diisi ? 'belum tercatat' : ''].filter(Boolean).join(' · ') + '</span></span>' +
           '<div class="st-pilih">' + ['H', 'S', 'I', 'A'].map(function (x) { return '<button type="button" data-st="' + x + '" style="--c:' + ST[x].c + '" aria-label="' + ST[x].t + '"' + (ro ? ' disabled' : '') + '>' + x + '</button>'; }).join('') + '</div></div>' +
           '<input class="input p-cat" placeholder="Keterangan (opsional), mis. demam" maxlength="120" value="' + h(cat[s.id]) + '"' + (ro ? ' readonly' : '') + '></div>';
       }).join('') + '</div>' : kosongHtml('kartu', 'Belum ada peserta di kelas ini', '')) +
-    '<div class="sub-judul">Materi pertemuan</div><div id="bab-pilih"></div>' + fld('Catatan materi (opsional)', 'materi', p.materi, { ph: 'contoh: Bab al-Kalam sampai contoh-contoh', attr: ro ? ' readonly' : '' }),
+    '<div class="sub-judul">Materi pertemuan</div><div id="bab-pilih"></div>' + fld('Capaian materi', 'materi', p.materi, { ph: 'contoh: Dars 9, hal. 59–63 sampai latihan 5', hint: 'Sudah sampai mana? Tampil di kartu pertemuan berikutnya.', attr: ro ? ' readonly' : '' }),
     kaki: (d.hak.kelola && p.diisi ? '<button class="btn btn-hapus ikon-saja kiri" data-kosong title="Kosongkan absensi">' + ik('sampah') + '</button>' : '') + (d.hak.kelola && !p.diisi ? '<button class="btn btn-garis ikon-saja kiri" data-atur title="Liburkan atau pindahkan">' + ik('kal') + '</button>' : '') +
       '<button class="btn btn-garis" data-batal>' + (ro ? 'Tutup' : 'Batal') + '</button>' + (ro || !d.peserta.length ? '' : '<button class="btn btn-utama" data-simpan>' + ik('centang') + 'Simpan</button>'),
     pasang: function (l) {
@@ -2409,13 +2528,35 @@ VIEW.kehadiran = function (el) {
 /* ================= TAHAP 3–4: BANK SOAL & UJIAN ================= */
 var TIPE_SOAL = { pg: 'Pilihan ganda', pgb: 'Pilih beberapa', bs: 'Benar / Salah', isian: 'Isian singkat', jodoh: 'Menjodohkan', uraian: 'Uraian' };
 var HURUF = 'ABCDEFGH';
-var RE_AR = /([؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿][؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿ً-ٰٟ\s.,:;،؛؟!()«»"'0-9٠-٩-]*[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿ً-ٰٟ)»])/g;
+/* Potongan Arab: diawali dan diakhiri huruf/harakat Arab, sehingga tanda baca di tepinya (kurung, titik dua, =) tetap mengikuti arah kalimat. */
+var AR_HURUF = '؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿';
+var RE_AR = new RegExp('[' + AR_HURUF + '](?:[' + AR_HURUF + '\\s.,:;!?()«»=0-9\\-]*[' + AR_HURUF + '])?', 'g');
+/** Posisi kurung yang tidak berpasangan di dalam satu potongan. */
+function kurungLepas(m) {
+  var tumpuk = [], buruk = [], lawan = { ')': '(', '»': '«' };
+  for (var i = 0; i < m.length; i++) {
+    var c = m[i];
+    if (c === '(' || c === '«') tumpuk.push(i);
+    else if (lawan[c]) { if (tumpuk.length && m[tumpuk[tumpuk.length - 1]] === lawan[c]) tumpuk.pop(); else buruk.push(i); }
+  }
+  return buruk.concat(tumpuk).sort(function (a, b) { return a - b; });
+}
+/** Bungkus potongan Arab (teks sudah di-escape) dengan span RTL terisolasi. */
+function bungkusAr(s) {
+  return String(s).replace(RE_AR, function (m) {
+    var buruk = kurungLepas(m);
+    if (!buruk.length) return '<span class="ar-i" dir="rtl">' + m + '</span>';
+    var out = '', a = 0;
+    buruk.forEach(function (i) { out += bungkusAr(m.slice(a, i)) + m[i]; a = i + 1; });
+    return out + bungkusAr(m.slice(a));
+  });
+}
 /** Teks soal: huruf Arab diperbesar & RTL, baris baru dipertahankan. */
 /** Arah baris dari huruf kuat pertama (dir="auto" tidak bisa dipakai karena potongan Arab dibungkus span ber-dir sendiri). */
 function arahTeks(s) { var m = String(s || '').match(/[A-Za-z\u00C0-\u024F]|[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/); return m && /[^\x00-\u024F]/.test(m[0]) ? 'rtl' : 'ltr'; }
 function teksKaya(s) {
   return String(s === null || s === undefined ? '' : s).split('\n').map(function (baris) {
-    var aman = h(baris).replace(RE_AR, '<span class="ar-i" dir="rtl">$1</span>');
+    var aman = bungkusAr(h(baris));
     return '<span dir="' + arahTeks(baris) + '" style="display:block">' + (aman || '&nbsp;') + '</span>';
   }).join('');
 }
@@ -4041,11 +4182,13 @@ function ujiKecepatan(btn, box) {
 /* ================= TAHAP 11: PENGINGAT WA ================= */
 var FPG = { kelas: null, jenis: 'jadwal', pilih: '', target: 'belum', batas: 75 };
 var JENIS_PENGINGAT = [
-  { v: 'jadwal', t: 'Jadwal', i: 'kal' }, { v: 'ujian', t: 'Ujian/Tes', i: 'ujian' }, { v: 'kuis', t: 'Kuis', i: 'kilat' },
+  { v: 'jadwal', t: 'Jadwal', i: 'kal' }, { v: 'rencana', t: 'Rencana hadir', i: 'centang' }, { v: 'libur', t: 'Kelas libur', i: 'kal' }, { v: 'ujian', t: 'Ujian/Tes', i: 'ujian' }, { v: 'kuis', t: 'Kuis', i: 'kilat' },
   { v: 'materi', t: 'Materi', i: 'buku' }, { v: 'hadir', t: 'Kehadiran', i: 'centang' }, { v: 'bebas', t: 'Pesan bebas', i: 'pesan' }
 ];
 var TEMPLAT_PENGINGAT = {
   jadwal: "Assalamu'alaikum {sapaan} {nama} 🙏\nPengingat kelas *{kelas}*:\n📅 {hari}, {tanggal}\n🕌 {waktu} · {tempat}\n{tautan}\nSampai jumpa, in syaa Allah.",
+  rencana: "Assalamu'alaikum {sapaan} {nama} 🙏\nMohon isi rencana kehadiran kelas *{kelas}* untuk {hari}, {tanggal} ({waktu}) di aplikasi: {aplikasi}\nCukup pilih Hadir, Izin, atau Sakit. Jazakumullahu khairan.",
+  libur: "Assalamu'alaikum {sapaan} {nama},\nKelas *{kelas}* {hari}, {tanggal} *diliburkan*{alasan}.\nSampai jumpa di pertemuan berikutnya, in syaa Allah.",
   ujian: "Assalamu'alaikum {sapaan} {nama},\n{jenis} *{judul}* ({kelas}) {status}, ditutup {tutup}. Durasi {durasi} menit.\nSilakan kerjakan lewat aplikasi: {aplikasi}\nBarakallahu fiikum.",
   kuis: "Assalamu'alaikum {sapaan} {nama},\nAda kuis latihan *{judul}* untuk {kelas}. Yuk dicoba, boleh diulang sampai puas 😊\n{aplikasi}",
   materi: "Assalamu'alaikum {sapaan} {nama},\nMateri *{judul}* ({tanggal}) sudah tersedia di aplikasi. Silakan dibaca, beri tanda paham, dan tanyakan bila ada yang belum jelas.\n{aplikasi}",
@@ -4065,31 +4208,33 @@ VIEW.pengingat = function (el) {
 function gambarPengingat(el, d) {
   var k = d.kelas, j = FPG.jenis, opsi = [], obj = null;
   if (j === 'jadwal') opsi = d.jadwal.map(function (p, i) { return { v: String(i), t: fTgl(p.tanggal, true) + (p.waktu ? ' · ' + p.waktu : ''), o: p }; });
+  if (j === 'rencana') opsi = (d.jadwal || []).filter(function (p) { return p.presensiPeserta && p.bukaRencana; }).map(function (p) { return { v: p.pid, t: fTgl(p.tanggal, true) + (p.waktu ? ' · ' + p.waktu : ''), o: p }; });
+  if (j === 'libur') opsi = (d.libur || []).map(function (p, i) { return { v: String(i), t: fTgl(p.tanggal, true) + (p.alasan ? ' · ' + p.alasan : ''), o: p }; });
   if (j === 'ujian') opsi = d.ujian.map(function (u) { return { v: u.id, t: (u.jenis === 'tes' ? 'Tes' : 'Ujian') + ': ' + u.judul, o: u }; });
   if (j === 'kuis') opsi = d.kuis.map(function (q) { return { v: q.id, t: q.judul, o: q }; });
   if (j === 'materi') opsi = d.materi.map(function (m) { return { v: m.id, t: m.judul + ' · ' + fTgl(m.tanggal), o: m }; });
   if (opsi.length && !opsi.some(function (o) { return o.v === FPG.pilih; })) FPG.pilih = opsi[0].v;
   obj = (opsi.filter(function (o) { return o.v === FPG.pilih; })[0] || {}).o || null;
-  var adaSudah = j === 'ujian' || j === 'kuis' || j === 'materi';
+  var adaSudah = j === 'ujian' || j === 'kuis' || j === 'materi' || j === 'rencana';
   var penerima = d.peserta.filter(function (p) {
     if (j === 'hadir') return p.hadir !== null && p.hadir < FPG.batas;
     if (adaSudah && obj && FPG.target === 'belum') return (obj.sudah || obj.dibaca || []).indexOf(p.id) < 0;
     return true;
   });
-  var kosong = { jadwal: 'Tidak ada pertemuan terjadwal dalam 3 pekan ke depan.', ujian: 'Tidak ada ujian/tes yang sedang atau akan dibuka.', kuis: 'Tidak ada kuis yang terbuka.', materi: 'Belum ada materi terbit.' }[j];
+  var kosong = { rencana: 'Rencana kehadiran baru bisa diisi peserta mulai sehari sebelum pertemuan. Belum ada pertemuan hari ini atau besok yang memakai presensi peserta.', libur: 'Tidak ada pertemuan yang diliburkan dalam 3 pekan ke depan.', jadwal: 'Tidak ada pertemuan terjadwal dalam 3 pekan ke depan.', ujian: 'Tidak ada ujian/tes yang sedang atau akan dibuka.', kuis: 'Tidak ada kuis yang terbuka.', materi: 'Belum ada materi terbit.' }[j];
   var html = '<div class="filter" id="f-jenis-pg">' + JENIS_PENGINGAT.map(function (x) { return '<button data-j="' + x.v + '" class="' + (j === x.v ? 'on' : '') + '">' + ik(x.i, 'mini') + x.t + '</button>'; }).join('') + '</div>';
   html += '<div class="kartu" style="margin-top:12px"><form id="f-pg">';
-  if (opsi.length) html += fld({ jadwal: 'Pertemuan', ujian: 'Ujian/tes', kuis: 'Kuis', materi: 'Materi' }[j], 'pilih', FPG.pilih, { pilihan: opsi.map(function (o) { return { v: o.v, t: o.t }; }) });
+  if (opsi.length) html += fld({ jadwal: 'Pertemuan', rencana: 'Pertemuan', libur: 'Pertemuan yang diliburkan', ujian: 'Ujian/tes', kuis: 'Kuis', materi: 'Materi' }[j], 'pilih', FPG.pilih, { pilihan: opsi.map(function (o) { return { v: o.v, t: o.t }; }) });
   else if (kosong) html += '<div class="info" style="margin-bottom:10px">' + ik('infoi') + '<span>' + kosong + '</span></div>';
-  if (adaSudah && obj) html += pilihChip('Kirim ke', 'target', FPG.target, [{ v: 'belum', t: j === 'materi' ? 'Yang belum membuka' : 'Yang belum mengerjakan' }, { v: 'semua', t: 'Semua peserta' }], { seg: 1 });
+  if (adaSudah && obj) html += pilihChip('Kirim ke', 'target', FPG.target, [{ v: 'belum', t: j === 'materi' ? 'Yang belum membuka' : j === 'rencana' ? 'Yang belum mengisi' : 'Yang belum mengerjakan' }, { v: 'semua', t: 'Semua peserta' }], { seg: 1 });
   if (j === 'hadir') html += fld('Kehadiran di bawah (%)', 'batas', FPG.batas, { tipe: 'number', mode: 'numeric' });
-  html += fld('Isi pesan', 'templat', templatPengingat(j), { tipe: 'textarea', cls: 'tpl-pg', hint: 'Kode otomatis: {nama} {sapaan} {kelas} {kitab} {hari} {tanggal} {waktu} {tempat} {tautan} {judul} {jenis} {status} {buka} {tutup} {durasi} {hadir} {aplikasi}. <a href="#" id="l-tpl-awal">Kembalikan ke teks awal</a>' }) + '</form>' +
+  html += fld('Isi pesan', 'templat', templatPengingat(j), { tipe: 'textarea', cls: 'tpl-pg', hint: 'Kode otomatis: {nama} {sapaan} {kelas} {kitab} {hari} {tanggal} {waktu} {tempat} {tautan} {judul} {jenis} {status} {buka} {tutup} {durasi} {hadir} {alasan} {aplikasi}. <a href="#" id="l-tpl-awal">Kembalikan ke teks awal</a>' }) + '</form>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-garis" id="b-salin-grup">' + ik('salin') + 'Salin untuk grup WA</button></div></div>';
   var kunciKirim = 'kh_kirim_' + k.id + '_' + j + '_' + (FPG.pilih || '') + '_' + d.hariIni;
   var terkirim = {}; try { terkirim = JSON.parse(store.get(kunciKirim) || '{}'); } catch (e) {}
   html += '<div class="judul-bag"><h2>Penerima · ' + penerima.length + '</h2><span class="hint" id="n-kirim">' + Object.keys(terkirim).filter(function (id) { return penerima.some(function (p) { return p.id === id; }); }).length + ' sudah dibuka di WA</span></div>';
   html += penerima.length ? '<div class="daftar" id="d-pg">' + penerima.map(function (p) {
-    var st = adaSudah && obj ? ((obj.sudah || obj.dibaca || []).indexOf(p.id) >= 0 ? '<span class="chip hijau">' + (j === 'materi' ? 'Sudah membuka' : 'Sudah') + '</span>' : '<span class="chip">' + (j === 'materi' ? 'Belum membuka' : 'Belum') + '</span>') : j === 'hadir' ? '<span class="chip">' + fN(p.hadir) + '%</span>' : '';
+    var st = adaSudah && obj ? ((obj.sudah || obj.dibaca || []).indexOf(p.id) >= 0 ? '<span class="chip hijau">' + (j === 'materi' ? 'Sudah membuka' : j === 'rencana' ? 'Sudah mengisi' : 'Sudah') + '</span>' : '<span class="chip">' + (j === 'materi' ? 'Belum membuka' : j === 'rencana' ? 'Belum mengisi' : 'Belum') + '</span>') : j === 'hadir' ? '<span class="chip">' + fN(p.hadir) + '%</span>' : '';
     return '<div class="baris"><span class="inisial' + (p.jk === 'P' ? ' p' : '') + '">' + h(inisial(p.nama)) + '</span><span class="isi"><b>' + h(p.nama) + '</b><span class="chips">' + st + (terkirim[p.id] ? '<span class="chip merek">' + ik('centang', 'mini') + 'Dibuka di WA</span>' : '') + '</span></span>' +
       (p.wa ? '<a class="btn btn-wa btn-kecil" data-wa="' + p.id + '" target="_blank" rel="noopener" href="#">' + ik('pesan', 'mini') + 'WA</a>' : '<span class="hint">WA kosong</span>') + '</div>';
   }).join('') + '</div>' : kosongHtml('centang', j === 'hadir' ? 'Tidak ada yang di bawah batas' : 'Semua sudah', '');
@@ -4099,7 +4244,7 @@ function gambarPengingat(el, d) {
     var P = p && p.jk === 'P', tpl = f.templat.value, o = obj || {};
     var nilai = { nama: p ? p.nama.split(' ')[0] : 'semuanya', sapaan: p ? (P ? 'Ukhti' : 'Akhi') : '', kelas: k.nama, kitab: k.kitab, tempat: k.online ? 'Online' : k.tempat, tautan: k.online && k.tautan ? '🔗 ' + k.tautan : '',
       waktu: (o.waktu || k.labelWaktu || ''), hari: o.tanggal ? HARI[tglObj(o.tanggal).getDay()] : '', tanggal: o.tanggal ? fTgl(o.tanggal) : '', judul: o.judul || '', jenis: o.jenis === 'tes' ? 'Tes' : 'Ujian',
-      status: o.sudahBuka ? 'sudah dibuka' : o.buka ? 'akan dibuka ' + fWaktu(o.buka) : '', buka: o.buka ? fWaktu(o.buka) : '', tutup: o.tutup ? fWaktu(o.tutup) : '', durasi: o.durasi || '', hadir: p && p.hadir !== null ? fN(p.hadir) : '', aplikasi: d.urlApp || '' };
+      status: o.sudahBuka ? 'sudah dibuka' : o.buka ? 'akan dibuka ' + fWaktu(o.buka) : '', buka: o.buka ? fWaktu(o.buka) : '', tutup: o.tutup ? fWaktu(o.tutup) : '', durasi: o.durasi || '', hadir: p && p.hadir !== null ? fN(p.hadir) : '', aplikasi: d.urlApp || '', alasan: o.alasan ? ' (' + o.alasan + ')' : '' };
     return tpl.replace(/\{(\w+)\}/g, function (m, key) { return nilai[key] !== undefined ? nilai[key] : m; }).replace(/[ \t]{2,}/g, ' ').replace(/ ,/g, ',').replace(/\n{3,}/g, '\n\n').trim();
   };
   $$('#f-jenis-pg button', el).forEach(function (b) { b.onclick = function () { FPG.jenis = b.dataset.j; FPG.pilih = ''; gambarPengingat(el, d); }; });
@@ -4783,7 +4928,7 @@ function fUkuran(b) { return !b ? '' : b < 1024 * 1024 ? Math.max(1, Math.round(
 function fmtRingkasan(s) {
   var html = '', dalamDaftar = false;
   String(s || '').split('\n').forEach(function (baris) {
-    var t = baris.trim(), isi = function (x) { return h(x).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(RE_AR, '<span class="ar-i" dir="rtl">$1</span>'); };
+    var t = baris.trim(), isi = function (x) { return bungkusAr(h(x).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')); };
     if (/^[-•]\s+/.test(t)) { if (!dalamDaftar) { html += '<ul>'; dalamDaftar = true; } html += '<li dir="' + arahTeks(t.replace(/^[-•]\s+/, '')) + '">' + isi(t.replace(/^[-•]\s+/, '')) + '</li>'; return; }
     if (dalamDaftar) { html += '</ul>'; dalamDaftar = false; }
     if (/^#\s+/.test(t)) html += '<h4 dir="' + arahTeks(t) + '">' + isi(t.replace(/^#\s+/, '')) + '</h4>';
