@@ -975,6 +975,9 @@ function mulai() {
     if (q.cek && !S.token) return layarCekDaftar();
     if (q.daftar && !S.token) return layarDaftar(q.daftar === '1' ? '' : q.daftar);
     if (q.daftar) S.bukaSetelah = 'kelasku';
+    if (q.materi && q.materi !== '1') S.bukaTautan = { jenis: 'materi', id: q.materi };
+    if (q.ujian && q.ujian !== '1') S.bukaTautan = { jenis: 'ujian', id: q.ujian };
+    if (S.bukaTautan) bersihkanUrl();
     if (S.token) return muatBoot(); layarMasuk();
   });
 }
@@ -1159,6 +1162,7 @@ function muatBoot() {
       render();
     }
     if (b.saya.wajibGanti) tampilGantiPassword(true);
+    else jalankanTautan();
   }).catch(function (e) { if (cepat) tandaSegar(false); if (e.kode !== 'SESI') { if (cepat) toast('Gagal memperbarui data: ' + e.message, 'galat'); else layarGalat(e.message, muatBoot); } });
 }
 function segarBoot() { return call('bootstrap').then(function (b) { S.boot = b; }); }
@@ -1494,6 +1498,68 @@ VIEW.beranda = function (el) {
   muatSegar(el, 'beranda', {}, gambarBeranda);
 };
 
+
+
+/* ================= TAUTAN LANGSUNG & BAGIKAN KE GRUP WA ================= */
+/** Alamat aplikasi untuk dibagikan: alamat GitHub Pages bila diatur di Pengaturan, selain itu alamat yang sedang dibuka. */
+function alamatApp() {
+  var u = String((S.boot && S.boot.urlApp) || '').replace(/[?#].*$/, '');
+  /* Dibuka dari GitHub Pages tetapi alamat di Pengaturan masih alamat Apps Script: bagikan alamat GitHub yang sedang dibuka. */
+  try { if ((!u || /\/exec$/.test(u)) && window.KHOBAR_API && /^https?:$/.test(location.protocol)) u = location.origin + location.pathname; } catch (e) {}
+  if (!u) { try { u = location.href.split(/[?#]/)[0]; } catch (e) { u = ''; } }
+  return u;
+}
+function tautanMateri(id) { return alamatApp() + '?materi=' + encodeURIComponent(id); }
+function tautanUjian(id) { return alamatApp() + '?ujian=' + encodeURIComponent(id); }
+/** Hapus ?materi=… dari alamat agar tidak terbuka lagi saat dimuat ulang (hanya di luar Apps Script). */
+function bersihkanUrl() {
+  try { if (!(window.google && google.script && google.script.url) && history.replaceState && location.search) history.replaceState(history.state, '', location.pathname + location.hash.replace(/#(materi|ujian)=[^&]*/, '')); } catch (e) {}
+}
+/** Dipanggil sekali setelah data awal termuat: buka materi/ujian dari tautan yang dibagikan. */
+function jalankanTautan() {
+  var t = S.bukaTautan; if (!t) return; S.bukaTautan = null;
+  setTimeout(function () {
+    if (t.jenis === 'materi') {
+      if (S.view !== 'materi') buka('materi');
+      bukaMateri(t.id, render);
+    } else if (t.jenis === 'ujian') {
+      if (isAdmin() || isGuru()) { if (S.view !== 'ujian') buka('ujian'); detailUjian(t.id, render); }
+      else if (menuSaya().some(function (m) { return m.id === 'ujianku'; })) buka('ujianku');
+    }
+  }, 120);
+}
+/** Lembar bagikan: pesan bisa disunting, lalu dikirim ke grup WA (memilih grup di WhatsApp) atau disalin. */
+function lembarBagikan(o) {
+  lembar({ judul: o.judul, isi: (o.atas || '') + '<form>' + fld('Pesan', 'pesan', o.pesan, { tipe: 'textarea', cls: 'tpl-pg', hint: 'Boleh disunting dulu. Tautan di akhir pesan membuka langsung halaman ini di aplikasi (peserta diminta masuk bila belum).' }) + '</form>' +
+    '<div class="info" style="margin-top:10px">' + ik('tautan') + '<span style="word-break:break-all">' + h(o.tautan) + '</span></div>',
+    kaki: '<button class="btn btn-garis" data-salin-tautan>' + ik('tautan') + 'Salin tautan</button><button class="btn btn-garis" data-salin-pesan>' + ik('salin') + 'Salin pesan</button><button class="btn btn-utama" data-wa>' + ik('pesan') + 'Kirim ke grup WA</button>',
+    pasang: function (l) {
+      var pesan = function () { return l.$('[name=pesan]').value.trim(); };
+      if (o.pasang) o.pasang(l);
+      l.$('[data-salin-tautan]').onclick = function () { salin(o.tautan); };
+      l.$('[data-salin-pesan]').onclick = function () { salin(pesan()); };
+      l.$('[data-wa]').onclick = function () { if (!pesan()) return toast('Pesan masih kosong.', 'galat'); window.open('https://wa.me/?text=' + encodeURIComponent(pesan()), '_blank', 'noopener'); };
+    } });
+}
+function bagikanMateri(m) {
+  var t = tautanMateri(m.id);
+  var pesan = "Assalamu'alaikum warahmatullah 🙏\n📚 *" + m.judul + '*\n' + m.kelas + (m.tanggal ? ' · ' + fTgl(m.tanggal, true) : '') +
+    '\n\nRingkasan materi sudah bisa dibaca di aplikasi KHOBAR. Silakan beri tanggapan (paham/belum) dan tanyakan yang belum jelas di kolom diskusi.\n' + t;
+  lembarBagikan({ judul: 'Bagikan materi', pesan: pesan, tautan: t });
+}
+function ingatkanUjianGrup(u, peserta) {
+  var t = tautanUjian(u.id), jenis = u.jenis === 'tes' ? 'Tes' : 'Ujian';
+  var belum = (peserta || []).filter(function (p) { return p.status === 'belum'; });
+  var susun = function (dgnNama) {
+    return "Assalamu'alaikum warahmatullah 🙏\n⏰ *Pengingat " + jenis + ': ' + u.judul + '*\n' + u.kelas.join(', ') +
+      '\n📅 Dibuka ' + fWaktu(u.buka) + '\n⌛ Ditutup ' + fWaktu(u.tutup) + '\n📝 ' + u.jumlahSoal + ' soal · ' + u.durasi + ' menit' +
+      (belum.length ? '\n\nYang belum mengerjakan: ' + belum.length + ' peserta' + (dgnNama ? '\n' + belum.map(function (p, i) { return (i + 1) + '. ' + p.nama; }).join('\n') : '') : '') +
+      '\n\nKerjakan di aplikasi KHOBAR (menu Ujian Saya):\n' + t + '\nSemoga Allah mudahkan.';
+  };
+  lembarBagikan({ judul: 'Ingatkan grup · ' + jenis, pesan: susun(false), tautan: t,
+    atas: belum.length ? '<label class="cek" style="margin-bottom:12px"><input type="checkbox" data-sebut-nama><span>Sebutkan nama yang belum mengerjakan<small>' + belum.length + ' peserta belum mengerjakan.</small></span></label>' : '',
+    pasang: function (l) { var c = l.$('[data-sebut-nama]'); if (c) c.onchange = function () { l.$('[name=pesan]').value = susun(c.checked); }; } });
+}
 
 /* ================= TAHAP 16: PERSIAPAN KELAS & PRESENSI PESERTA ================= */
 function htmlCapaian(cap, kosongTeks) {
@@ -3036,9 +3102,10 @@ function detailUjian(id, selesai) {
   call('ujianDetail', { id: id }).then(function (d) {
     var u = d.ujian;
     lembar({ judul: u.judul, lebar: true, tanpaFokus: true, isi: '<div id="isi-du"></div>',
-      kaki: (u.bolehKelola ? '<button class="btn btn-garis kiri" data-ubah>' + ik('pensil') + 'Ubah</button><button class="btn btn-garis" data-coba>' + ik('mata') + 'Coba</button>' : '') + '<button class="btn btn-garis" data-unduh>' + ik('unduh') + 'Unduh</button><button class="btn btn-utama" data-batal>Tutup</button>',
+      kaki: (u.bolehKelola ? '<button class="btn btn-garis kiri" data-ubah>' + ik('pensil') + 'Ubah</button><button class="btn btn-garis" data-coba>' + ik('mata') + 'Coba</button>' : '') + (u.bolehKelola && u.status === 'terbit' && u.fase !== 'tutup' ? '<button class="btn btn-garis" data-ingat-grup>' + ik('pesan') + 'Ingatkan grup</button>' : '') + '<button class="btn btn-garis" data-unduh>' + ik('unduh') + 'Unduh</button><button class="btn btn-utama" data-batal>Tutup</button>',
       saatTutup: selesai,
       pasang: function (l) {
+        var bIng = l.$('[data-ingat-grup]'); if (bIng) bIng.onclick = function () { ingatkanUjianGrup(u, d.peserta); };
         var segar = function () { call('ujianDetail', { id: id }).then(function (x) { d = x; u = d.ujian; gambar(); }, function (e) { toast(e.message, 'galat'); }); };
         var gambar = function () {
           var sel = d.peserta.filter(function (p) { return p.status === 'selesai'; }), nilai = sel.map(function (p) { return p.nilai; }).filter(function (x) { return x !== null && x !== undefined; });
@@ -4992,9 +5059,10 @@ function bukaMateri(id, selesai, ringkas) {
   call('materiDetail', { id: id }).then(function (d) {
     var m = d.materi, balas = '';
     lembar({ judul: m.judul, lebar: true, tanpaFokus: true, isi: '<div id="isi-mt"></div>', saatTutup: selesai,
-      kaki: (d.kelola ? '<button class="btn btn-garis kiri" data-ubah>' + ik('pensil') + 'Ubah</button>' : '') + '<button class="btn btn-utama" data-batal>Tutup</button>',
+      kaki: (d.kelola ? '<button class="btn btn-garis kiri" data-ubah>' + ik('pensil') + 'Ubah</button>' : '') + (d.kelola && m.status === 'terbit' ? '<button class="btn btn-garis" data-bagikan>' + ik('pesan') + 'Bagikan</button>' : '') + '<button class="btn btn-utama" data-batal>Tutup</button>',
       pasang: function (l) {
         var box = l.$('#isi-mt');
+        var bBagi = l.$('[data-bagikan]'); if (bBagi) bBagi.onclick = function () { bagikanMateri(m); };
         var gambarKom = function () {
           var k = l.$('#komentar-mt'); if (!k) return;
           k.innerHTML = d.komentar.length ? d.komentar.map(function (x) { return htmlKomentar(x, d) + (x.balasan.length ? '<div class="balasan">' + x.balasan.map(function (y) { return htmlKomentar(y, d, true); }).join('') + '</div>' : ''); }).join('') : '<p class="hint">Belum ada komentar. Silakan bertanya bila ada yang belum jelas.</p>';
